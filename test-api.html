@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            background: #333;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            background: #444;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <h1>API Test Page</h1>
+    
+    <div class="test-section">
+        <h2>Test API Endpoints</h2>
+        <button onclick="testSegments()">Test /api/segments</button>
+        <button onclick="testStatus()">Test /api/status</button>
+        <button onclick="testManifest()">Test /api/manifest</button>
+        <div id="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Live Stream Links</h2>
+        <p><a href="/" target="_blank">Live Streamer (demoIndex.html)</a></p>
+        <p><a href="/live" target="_blank">Live Viewer (live.html)</a></p>
+    </div>
+
+    <script>
+        async function testSegments() {
+            try {
+                const response = await fetch('/api/segments');
+                const data = await response.json();
+                showResult('Segments API', data, 'success');
+            } catch (error) {
+                showResult('Segments API', error.message, 'error');
+            }
+        }
+
+        async function testStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                showResult('Status API', data, 'success');
+            } catch (error) {
+                showResult('Status API', error.message, 'error');
+            }
+        }
+
+        async function testManifest() {
+            try {
+                const response = await fetch('/api/manifest');
+                const data = await response.text();
+                showResult('Manifest API', data, 'success');
+            } catch (error) {
+                showResult('Manifest API', error.message, 'error');
+            }
+        }
+
+        function showResult(title, data, type) {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = `<strong>${title}:</strong>\n${JSON.stringify(data, null, 2)}`;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                testSegments();
+                testStatus();
+                testManifest();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
