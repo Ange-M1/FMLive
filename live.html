@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Stream Viewer</title>
+    <title>Live Stream Viewer - Real-time</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
             background: #1a1a1a;
@@ -20,14 +20,53 @@
             margin-bottom: 30px;
         }
 
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto 20px;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
         #videoPlayer {
             width: 100%;
-            max-width: 640px;
-            height: 360px;
+            height: 450px;
             background: #000;
             display: block;
-            margin: 0 auto 20px;
-            border: 2px solid #333;
+            border: none;
+            outline: none;
+        }
+
+        .live-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .live-indicator {
+            width: 8px;
+            height: 8px;
+            background: #fff;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
         }
 
         .status {
@@ -39,37 +78,39 @@
             font-size: 18px;
         }
 
-        .live-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            background: #ff0000;
-            border-radius: 50%;
-            margin-right: 8px;
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.3; }
-            100% { opacity: 1; }
-        }
-
-        .info {
-            background: #333;
-            padding: 15px;
-            border-radius: 5px;
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
             margin-bottom: 20px;
         }
 
-        .info div {
-            margin: 8px 0;
-            font-size: 16px;
+        .info-card {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .info-card h3 {
+            margin: 0 0 10px 0;
+            color: #007bff;
+            font-size: 14px;
+        }
+
+        .info-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
         }
 
         .controls {
             text-align: center;
             margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
         }
 
         button {
@@ -80,22 +121,32 @@
             background: #007bff;
             color: white;
             border-radius: 5px;
-            margin: 0 10px;
+            transition: all 0.3s ease;
         }
 
         button:hover {
             background: #0056b3;
+            transform: translateY(-2px);
         }
 
         button:disabled {
             background: #666;
             cursor: not-allowed;
+            transform: none;
+        }
+
+        .download-btn {
+            background: #28a745;
+        }
+
+        .download-btn:hover {
+            background: #218838;
         }
 
         .log {
             background: #333;
             border-radius: 5px;
-            max-height: 150px;
+            max-height: 200px;
             overflow-y: auto;
             margin-top: 20px;
         }
@@ -105,6 +156,9 @@
             background: #444;
             border-radius: 5px 5px 0 0;
             font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .log-content {
@@ -119,15 +173,82 @@
             color: #ccc;
         }
 
+        .log-entry.success {
+            color: #28a745;
+        }
+
+        .log-entry.error {
+            color: #dc3545;
+        }
+
+        .log-entry.warning {
+            color: #ffc107;
+        }
+
         .offline {
             color: #666;
+        }
+
+        .segment-queue {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .queue-item {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .queue-item.playing {
+            background: #28a745;
+        }
+
+        .queue-item.played {
+            background: #666;
+        }
+
+        .download-progress {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #555;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #007bff;
+            width: 0%;
+            transition: width 0.3s ease;
         }
     </style>
 </head>
 <body>
-    <h1>Live Stream Viewer</h1>
+    <h1>Live Stream Viewer - Real-time</h1>
     
-    <video id="videoPlayer" controls autoplay muted playsinline></video>
+    <div class="video-container">
+        <video id="videoPlayer" controls autoplay muted playsinline></video>
+        <div class="live-overlay" id="liveOverlay" style="display: none;">
+            <span class="live-indicator"></span>
+            LIVE
+        </div>
+    </div>
 
     <div class="status" id="status">
         <span class="offline">Waiting for live stream...</span>
@@ -136,24 +257,61 @@
     <div class="controls">
         <button id="connectBtn">Connect to Stream</button>
         <button id="disconnectBtn" disabled>Disconnect</button>
+        <button id="downloadBtn" class="download-btn" disabled>Download Complete Stream</button>
     </div>
 
-    <div class="info">
-        <div>Status: <span id="connectionStatus">Offline</span></div>
-        <div>Current Segment: <span id="currentSegment">-</span></div>
-        <div>Segments Played: <span id="segmentsPlayed">0</span></div>
-        <div>Buffer Health: <span id="bufferHealth">0s</span></div>
+    <div class="info-grid">
+        <div class="info-card">
+            <h3>Status</h3>
+            <div class="value" id="connectionStatus">Offline</div>
+        </div>
+        <div class="info-card">
+            <h3>Current Segment</h3>
+            <div class="value" id="currentSegment">-</div>
+        </div>
+        <div class="info-card">
+            <h3>Segments Played</h3>
+            <div class="value" id="segmentsPlayed">0</div>
+        </div>
+        <div class="info-card">
+            <h3>Buffer Health</h3>
+            <div class="value" id="bufferHealth">0s</div>
+        </div>
+        <div class="info-card">
+            <h3>Total Segments</h3>
+            <div class="value" id="totalSegments">0</div>
+        </div>
+        <div class="info-card">
+            <h3>Latency</h3>
+            <div class="value" id="latency">-</div>
+        </div>
+    </div>
+
+    <div class="segment-queue" id="segmentQueue" style="display: none;">
+        <h3>Segment Queue</h3>
+        <div id="queueDisplay"></div>
+    </div>
+
+    <div class="download-progress" id="downloadProgress">
+        <h3>Downloading Complete Stream...</h3>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div id="downloadStatus">Preparing download...</div>
     </div>
 
     <div class="log">
-        <div class="log-header">Viewer Log</div>
+        <div class="log-header">
+            <span>Viewer Log</span>
+            <button id="clearLog" style="padding: 5px 10px; font-size: 12px;">Clear</button>
+        </div>
         <div class="log-content" id="viewerLog">
             <div class="log-entry">Ready to connect to live stream...</div>
         </div>
     </div>
 
     <script>
-        class LiveViewer {
+        class RealTimeLiveViewer {
             constructor() {
                 this.isConnected = false;
                 this.currentSegmentIndex = 0;
@@ -161,10 +319,12 @@
                 this.checkInterval = null;
                 this.videoQueue = [];
                 this.isPlaying = false;
-                this.db = null;
+                this.segmentFiles = new Map();
+                this.lastSegmentTime = 0;
+                this.startTime = Date.now();
                 
                 this.initElements();
-                this.initIndexedDB();
+                this.initFileSystem();
             }
 
             initElements() {
@@ -172,33 +332,42 @@
                 this.status = document.getElementById('status');
                 this.connectBtn = document.getElementById('connectBtn');
                 this.disconnectBtn = document.getElementById('disconnectBtn');
+                this.downloadBtn = document.getElementById('downloadBtn');
                 this.connectionStatus = document.getElementById('connectionStatus');
                 this.currentSegment = document.getElementById('currentSegment');
                 this.segmentsPlayed = document.getElementById('segmentsPlayed');
                 this.bufferHealth = document.getElementById('bufferHealth');
+                this.totalSegments = document.getElementById('totalSegments');
+                this.latency = document.getElementById('latency');
                 this.viewerLog = document.getElementById('viewerLog');
+                this.liveOverlay = document.getElementById('liveOverlay');
+                this.segmentQueue = document.getElementById('segmentQueue');
+                this.queueDisplay = document.getElementById('queueDisplay');
+                this.downloadProgress = document.getElementById('downloadProgress');
+                this.progressFill = document.getElementById('progressFill');
+                this.downloadStatus = document.getElementById('downloadStatus');
 
                 this.connectBtn.addEventListener('click', () => this.connect());
                 this.disconnectBtn.addEventListener('click', () => this.disconnect());
+                this.downloadBtn.addEventListener('click', () => this.downloadCompleteStream());
+                document.getElementById('clearLog').addEventListener('click', () => this.clearLog());
                 
                 this.videoPlayer.addEventListener('ended', () => this.playNextSegment());
                 this.videoPlayer.addEventListener('error', (e) => this.handleVideoError(e));
+                this.videoPlayer.addEventListener('loadstart', () => this.handleVideoLoadStart());
+                this.videoPlayer.addEventListener('canplay', () => this.handleVideoCanPlay());
             }
 
-            async initIndexedDB() {
+            async initFileSystem() {
                 try {
-                    const request = indexedDB.open('LiveStreamDB', 1);
-                    
-                    request.onsuccess = () => {
-                        this.db = request.result;
-                        this.addLogEntry('Connected to IndexedDB');
-                    };
-                    
-                    request.onerror = () => {
-                        this.addLogEntry('Failed to connect to IndexedDB');
-                    };
+                    // Request permission to access files
+                    const handle = await window.showDirectoryPicker();
+                    this.addLogEntry('File system access granted', 'success');
+                    this.rootHandle = handle;
                 } catch (error) {
-                    this.addLogEntry('IndexedDB not available: ' + error.message);
+                    this.addLogEntry('File system access denied: ' + error.message, 'error');
+                    // Fallback to manual file monitoring
+                    this.addLogEntry('Using fallback file monitoring method', 'warning');
                 }
             }
 
@@ -207,14 +376,16 @@
                 this.currentSegmentIndex = 0;
                 this.segmentsPlayed = 0;
                 this.videoQueue = [];
+                this.segmentFiles.clear();
+                this.startTime = Date.now();
                 
                 this.updateUI();
-                this.addLogEntry('Connecting to live stream...');
+                this.addLogEntry('Connecting to live stream...', 'success');
                 
-                // Start checking for new segments every 1 second for low latency
+                // Start checking for new segments every 500ms for ultra-low latency
                 this.checkInterval = setInterval(() => {
                     this.checkForNewSegments();
-                }, 1000);
+                }, 500);
                 
                 // Initial check
                 this.checkForNewSegments();
@@ -231,67 +402,130 @@
                 this.videoPlayer.src = '';
                 this.videoQueue = [];
                 this.isPlaying = false;
+                this.segmentFiles.clear();
                 
                 this.updateUI();
                 this.addLogEntry('Disconnected from stream');
             }
 
             async checkForNewSegments() {
-                if (!this.db || !this.isConnected) return;
+                if (!this.isConnected) return;
 
                 try {
-                    const transaction = this.db.transaction(['segments'], 'readonly');
-                    const store = transaction.objectStore('segments');
-                    const request = store.getAll();
+                    // Try to access LIVERESULTS folder
+                    let liveresultsHandle;
                     
-                    request.onsuccess = () => {
-                        const segments = request.result;
-                        const availableSegments = segments
-                            .filter(s => s.index >= this.currentSegmentIndex)
-                            .sort((a, b) => a.index - b.index);
+                    if (this.rootHandle) {
+                        try {
+                            liveresultsHandle = await this.rootHandle.getDirectoryHandle('LIVERESULTS');
+                        } catch (error) {
+                            // LIVERESULTS folder doesn't exist yet
+                            return;
+                        }
+                    } else {
+                        // Fallback: try to fetch segments via HTTP
+                        await this.checkSegmentsViaHTTP();
+                        return;
+                    }
+
+                    // Get all segment files
+                    const segmentFiles = [];
+                    for await (const entry of liveresultsHandle.values()) {
+                        if (entry.name.endsWith('.ts') && entry.name.startsWith('segment_')) {
+                            segmentFiles.push(entry.name);
+                        }
+                    }
+
+                    // Sort by segment index
+                    segmentFiles.sort((a, b) => {
+                        const aIndex = parseInt(a.match(/segment_(\d+)\.ts/)[1]);
+                        const bIndex = parseInt(b.match(/segment_(\d+)\.ts/)[1]);
+                        return aIndex - bIndex;
+                    });
+
+                    // Check for new segments
+                    for (const fileName of segmentFiles) {
+                        const segmentIndex = parseInt(fileName.match(/segment_(\d+)\.ts/)[1]);
                         
-                        if (availableSegments.length > 0) {
-                            this.addSegmentsToQueue(availableSegments);
+                        if (segmentIndex >= this.currentSegmentIndex && !this.segmentFiles.has(fileName)) {
+                            this.segmentFiles.set(fileName, segmentIndex);
                             
-                            if (!this.isPlaying && this.videoQueue.length > 0) {
-                                this.playNextSegment();
+                            // Create blob URL for the segment
+                            try {
+                                const fileHandle = await liveresultsHandle.getFileHandle(fileName);
+                                const file = await fileHandle.getFile();
+                                const blob = new Blob([await file.arrayBuffer()], { type: 'video/mp2t' });
+                                const url = URL.createObjectURL(blob);
+                                
+                                this.videoQueue.push({
+                                    index: segmentIndex,
+                                    url: url,
+                                    fileName: fileName,
+                                    timestamp: Date.now()
+                                });
+                                
+                                this.addLogEntry('New segment detected: ' + fileName, 'success');
+                                
+                                // Play immediately if not currently playing
+                                if (!this.isPlaying && this.videoQueue.length > 0) {
+                                    this.playNextSegment();
+                                }
+                            } catch (error) {
+                                this.addLogEntry('Error loading segment ' + fileName + ': ' + error.message, 'error');
                             }
                         }
-                        
-                        this.updateBufferHealth();
-                    };
+                    }
                     
-                    request.onerror = () => {
-                        this.addLogEntry('Error reading segments from database');
-                    };
+                    this.updateBufferHealth();
+                    this.updateLatency();
                     
                 } catch (error) {
-                    this.addLogEntry('Error checking for segments: ' + error.message);
+                    this.addLogEntry('Error checking for segments: ' + error.message, 'error');
                 }
             }
 
-            addSegmentsToQueue(segments) {
-                for (const segment of segments) {
-                    if (!this.videoQueue.find(s => s.index === segment.index)) {
-                        const blob = new Blob([segment.data], { type: 'video/webm' });
-                        this.videoQueue.push({
-                            index: segment.index,
-                            url: URL.createObjectURL(blob),
-                            id: segment.id
-                        });
+            async checkSegmentsViaHTTP() {
+                try {
+                    // Try to fetch segment list from server
+                    const response = await fetch('/api/segments');
+                    if (response.ok) {
+                        const segments = await response.json();
                         
-                        this.addLogEntry('Added segment to queue: ' + segment.id);
+                        for (const segment of segments) {
+                            if (segment.index >= this.currentSegmentIndex && !this.segmentFiles.has(segment.filename)) {
+                                this.segmentFiles.set(segment.filename, segment.index);
+                                
+                                // Fetch the segment file
+                                const segmentResponse = await fetch('/segments/' + segment.filename);
+                                if (segmentResponse.ok) {
+                                    const blob = await segmentResponse.blob();
+                                    const url = URL.createObjectURL(blob);
+                                    
+                                    this.videoQueue.push({
+                                        index: segment.index,
+                                        url: url,
+                                        fileName: segment.filename,
+                                        timestamp: Date.now()
+                                    });
+                                    
+                                    this.addLogEntry('New segment via HTTP: ' + segment.filename, 'success');
+                                    
+                                    if (!this.isPlaying && this.videoQueue.length > 0) {
+                                        this.playNextSegment();
+                                    }
+                                }
+                            }
+                        }
                     }
+                } catch (error) {
+                    // HTTP method failed, continue with file system
                 }
-                
-                // Sort queue by index
-                this.videoQueue.sort((a, b) => a.index - b.index);
             }
 
             playNextSegment() {
                 if (this.videoQueue.length === 0) {
                     this.isPlaying = false;
-                    this.addLogEntry('No segments in queue, waiting...');
+                    this.addLogEntry('No segments in queue, waiting...', 'warning');
                     return;
                 }
 
@@ -300,7 +534,7 @@
                 
                 if (!nextSegment) {
                     this.isPlaying = false;
-                    this.addLogEntry('Waiting for segment ' + this.currentSegmentIndex);
+                    this.addLogEntry('Waiting for segment ' + this.currentSegmentIndex, 'warning');
                     return;
                 }
 
@@ -312,23 +546,24 @@
                     this.isPlaying = true;
                     this.currentSegmentIndex++;
                     this.segmentsPlayed++;
+                    this.lastSegmentTime = Date.now();
                     
-                    this.currentSegment.textContent = nextSegment.id;
+                    this.currentSegment.textContent = nextSegment.fileName;
                     this.segmentsPlayed.textContent = this.segmentsPlayed;
                     
-                    this.addLogEntry('Playing: ' + nextSegment.id);
+                    this.addLogEntry('Playing: ' + nextSegment.fileName, 'success');
                     
-                    // Clean up old URL
-                    setTimeout(() => URL.revokeObjectURL(nextSegment.url), 1000);
+                    // Clean up old URL after a delay
+                    setTimeout(() => URL.revokeObjectURL(nextSegment.url), 2000);
                     
                 }).catch(error => {
-                    this.addLogEntry('Error playing segment: ' + error.message);
+                    this.addLogEntry('Error playing segment: ' + error.message, 'error');
                     this.isPlaying = false;
                 });
             }
 
             handleVideoError(event) {
-                this.addLogEntry('Video error: ' + (event.target.error?.message || 'Unknown error'));
+                this.addLogEntry('Video error: ' + (event.target.error?.message || 'Unknown error'), 'error');
                 this.isPlaying = false;
                 
                 // Try to continue with next segment after a short delay
@@ -339,45 +574,162 @@
                 }, 1000);
             }
 
+            handleVideoLoadStart() {
+                this.addLogEntry('Loading segment...');
+            }
+
+            handleVideoCanPlay() {
+                this.addLogEntry('Segment ready to play');
+            }
+
             updateBufferHealth() {
                 const bufferedSegments = this.videoQueue.length;
                 const bufferSeconds = bufferedSegments * 6; // Each segment is 6 seconds
                 this.bufferHealth.textContent = bufferSeconds + 's';
+                
+                // Update queue display
+                this.updateQueueDisplay();
+            }
+
+            updateQueueDisplay() {
+                if (this.videoQueue.length === 0) {
+                    this.segmentQueue.style.display = 'none';
+                    return;
+                }
+                
+                this.segmentQueue.style.display = 'block';
+                this.queueDisplay.innerHTML = '';
+                
+                // Show next 5 segments in queue
+                const nextSegments = this.videoQueue
+                    .sort((a, b) => a.index - b.index)
+                    .slice(0, 5);
+                
+                nextSegments.forEach(segment => {
+                    const item = document.createElement('span');
+                    item.className = 'queue-item';
+                    item.textContent = segment.fileName;
+                    this.queueDisplay.appendChild(item);
+                });
+            }
+
+            updateLatency() {
+                if (this.lastSegmentTime > 0) {
+                    const latency = Date.now() - this.lastSegmentTime;
+                    this.latency.textContent = latency + 'ms';
+                }
+            }
+
+            async downloadCompleteStream() {
+                if (this.segmentFiles.size === 0) {
+                    this.addLogEntry('No segments available for download', 'error');
+                    return;
+                }
+
+                this.downloadProgress.style.display = 'block';
+                this.downloadStatus.textContent = 'Preparing segments for download...';
+                
+                try {
+                    const segments = Array.from(this.segmentFiles.entries())
+                        .sort((a, b) => a[1] - b[1]);
+                    
+                    const segmentBlobs = [];
+                    let processedCount = 0;
+                    
+                    for (const [fileName, index] of segments) {
+                        try {
+                            // Get segment file
+                            const liveresultsHandle = await this.rootHandle.getDirectoryHandle('LIVERESULTS');
+                            const fileHandle = await liveresultsHandle.getFileHandle(fileName);
+                            const file = await fileHandle.getFile();
+                            const blob = await file.arrayBuffer();
+                            
+                            segmentBlobs.push(new Blob([blob], { type: 'video/mp2t' }));
+                            processedCount++;
+                            
+                            // Update progress
+                            const progress = (processedCount / segments.length) * 100;
+                            this.progressFill.style.width = progress + '%';
+                            this.downloadStatus.textContent = `Processing segment ${processedCount}/${segments.length}`;
+                            
+                        } catch (error) {
+                            this.addLogEntry('Error processing segment ' + fileName + ': ' + error.message, 'error');
+                        }
+                    }
+                    
+                    // Combine all segments into one video
+                    this.downloadStatus.textContent = 'Combining segments...';
+                    const combinedBlob = new Blob(segmentBlobs, { type: 'video/mp4' });
+                    
+                    // Create download link
+                    const url = URL.createObjectURL(combinedBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'complete_live_stream.mp4';
+                    a.style.display = 'none';
+                    
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    this.downloadStatus.textContent = 'Download complete!';
+                    this.addLogEntry('Complete stream downloaded successfully', 'success');
+                    
+                    // Hide progress after 3 seconds
+                    setTimeout(() => {
+                        this.downloadProgress.style.display = 'none';
+                    }, 3000);
+                    
+                } catch (error) {
+                    this.addLogEntry('Error downloading complete stream: ' + error.message, 'error');
+                    this.downloadStatus.textContent = 'Download failed';
+                }
             }
 
             updateUI() {
                 this.connectBtn.disabled = this.isConnected;
                 this.disconnectBtn.disabled = !this.isConnected;
+                this.downloadBtn.disabled = this.segmentFiles.size === 0;
                 
                 if (this.isConnected) {
                     this.status.innerHTML = '<span class="live-indicator"></span>LIVE - Connected';
                     this.connectionStatus.textContent = 'Connected';
+                    this.liveOverlay.style.display = 'flex';
                 } else {
                     this.status.innerHTML = '<span class="offline">Offline</span>';
                     this.connectionStatus.textContent = 'Offline';
                     this.currentSegment.textContent = '-';
+                    this.liveOverlay.style.display = 'none';
+                    this.segmentQueue.style.display = 'none';
                 }
+                
+                this.totalSegments.textContent = this.segmentFiles.size;
             }
 
-            addLogEntry(message) {
+            addLogEntry(message, type = '') {
                 const timestamp = new Date().toLocaleTimeString();
                 const logEntry = document.createElement('div');
-                logEntry.className = 'log-entry';
+                logEntry.className = 'log-entry' + (type ? ' ' + type : '');
                 logEntry.textContent = '[' + timestamp + '] ' + message;
                 
                 this.viewerLog.appendChild(logEntry);
                 this.viewerLog.scrollTop = this.viewerLog.scrollHeight;
                 
-                // Keep only last 30 entries
-                while (this.viewerLog.children.length > 30) {
+                // Keep only last 50 entries
+                while (this.viewerLog.children.length > 50) {
                     this.viewerLog.removeChild(this.viewerLog.firstChild);
                 }
+            }
+
+            clearLog() {
+                this.viewerLog.innerHTML = '<div class="log-entry">Log cleared...</div>';
             }
         }
 
         // Initialize viewer when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            new LiveViewer();
+            new RealTimeLiveViewer();
         });
     </script>
 </body>
