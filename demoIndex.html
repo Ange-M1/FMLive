@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Streaming - Auto Save</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        #videoPlayer {
+            width: 100%;
+            max-width: 640px;
+            height: 360px;
+            background: #000;
+            display: block;
+            margin: 0 auto 20px;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background: #fff;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            text-align: center;
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+
+        .info {
+            background: #fff;
+            padding: 15px;
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+
+        .info div {
+            margin: 5px 0;
+        }
+
+        .save-log {
+            background: #fff;
+            border: 1px solid #ccc;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .save-log-header {
+            padding: 10px;
+            background: #f0f0f0;
+            border-bottom: 1px solid #ccc;
+            font-weight: bold;
+        }
+
+        .save-log-content {
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin: 2px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live Streaming - Auto Save</h1>
+    
+    <video id="videoPlayer" autoplay muted playsinline></video>
+
+    <div class="controls">
+        <button id="startLive">Start Live</button>
+        <button id="endLive" disabled>End Live</button>
+    </div>
+
+    <div class="status" id="status">Ready to go live</div>
+
+    <div class="info">
+        <div>Segments: <span id="segmentCount">0</span></div>
+        <div>Duration: <span id="recordingTime">00:00</span></div>
+        <div>Auto-saved: <span id="savedCount">0</span></div>
+        <div>Total Size: <span id="totalSize">0 MB</span></div>
+    </div>
+
+    <div class="save-log">
+        <div class="save-log-header">Auto-Save Log</div>
+        <div class="save-log-content" id="saveLog">
+            <div class="log-entry">Ready to start auto-saving...</div>
+        </div>
+    </div>
+
+    <script src="liveStreamer.js"></script>
+</body>
+</html>

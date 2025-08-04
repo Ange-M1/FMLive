@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Stream Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        h1 {
+            text-align: center;
+            color: #fff;
+            margin-bottom: 30px;
+        }
+
+        #videoPlayer {
+            width: 100%;
+            max-width: 640px;
+            height: 360px;
+            background: #000;
+            display: block;
+            margin: 0 auto 20px;
+            border: 2px solid #333;
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            background: #333;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .live-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: #ff0000;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        .info {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .info div {
+            margin: 8px 0;
+            font-size: 16px;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            background: #007bff;
+            color: white;
+            border-radius: 5px;
+            margin: 0 10px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .log {
+            background: #333;
+            border-radius: 5px;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .log-header {
+            padding: 10px 15px;
+            background: #444;
+            border-radius: 5px 5px 0 0;
+            font-weight: bold;
+        }
+
+        .log-content {
+            padding: 10px 15px;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .log-entry {
+            margin: 3px 0;
+            color: #ccc;
+        }
+
+        .offline {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live Stream Viewer</h1>
+    
+    <video id="videoPlayer" controls autoplay muted playsinline></video>
+
+    <div class="status" id="status">
+        <span class="offline">Waiting for live stream...</span>
+    </div>
+
+    <div class="controls">
+        <button id="connectBtn">Connect to Stream</button>
+        <button id="disconnectBtn" disabled>Disconnect</button>
+    </div>
+
+    <div class="info">
+        <div>Status: <span id="connectionStatus">Offline</span></div>
+        <div>Current Segment: <span id="currentSegment">-</span></div>
+        <div>Segments Played: <span id="segmentsPlayed">0</span></div>
+        <div>Buffer Health: <span id="bufferHealth">0s</span></div>
+    </div>
+
+    <div class="log">
+        <div class="log-header">Viewer Log</div>
+        <div class="log-content" id="viewerLog">
+            <div class="log-entry">Ready to connect to live stream...</div>
+        </div>
+    </div>
+
+    <script>
+        class LiveViewer {
+            constructor() {
+                this.isConnected = false;
+                this.currentSegmentIndex = 0;
+                this.segmentsPlayed = 0;
+                this.checkInterval = null;
+                this.videoQueue = [];
+                this.isPlaying = false;
+                this.db = null;
+                
+                this.initElements();
+                this.initIndexedDB();
+            }
+
+            initElements() {
+                this.videoPlayer = document.getElementById('videoPlayer');
+                this.status = document.getElementById('status');
+                this.connectBtn = document.getElementById('connectBtn');
+                this.disconnectBtn = document.getElementById('disconnectBtn');
+                this.connectionStatus = document.getElementById('connectionStatus');
+                this.currentSegment = document.getElementById('currentSegment');
+                this.segmentsPlayed = document.getElementById('segmentsPlayed');
+                this.bufferHealth = document.getElementById('bufferHealth');
+                this.viewerLog = document.getElementById('viewerLog');
+
+                this.connectBtn.addEventListener('click', () => this.connect());
+                this.disconnectBtn.addEventListener('click', () => this.disconnect());
+                
+                this.videoPlayer.addEventListener('ended', () => this.playNextSegment());
+                this.videoPlayer.addEventListener('error', (e) => this.handleVideoError(e));
+            }
+
+            async initIndexedDB() {
+                try {
+                    const request = indexedDB.open('LiveStreamDB', 1);
+                    
+                    request.onsuccess = () => {
+                        this.db = request.result;
+                        this.addLogEntry('Connected to IndexedDB');
+                    };
+                    
+                    request.onerror = () => {
+                        this.addLogEntry('Failed to connect to IndexedDB');
+                    };
+                } catch (error) {
+                    this.addLogEntry('IndexedDB not available: ' + error.message);
+                }
+            }
+
+            async connect() {
+                this.isConnected = true;
+                this.currentSegmentIndex = 0;
+                this.segmentsPlayed = 0;
+                this.videoQueue = [];
+                
+                this.updateUI();
+                this.addLogEntry('Connecting to live stream...');
+                
+                // Start checking for new segments every 1 second for low latency
+                this.checkInterval = setInterval(() => {
+                    this.checkForNewSegments();
+                }, 1000);
+                
+                // Initial check
+                this.checkForNewSegments();
+            }
+
+            disconnect() {
+                this.isConnected = false;
+                
+                if (this.checkInterval) {
+                    clearInterval(this.checkInterval);
+                    this.checkInterval = null;
+                }
+                
+                this.videoPlayer.src = '';
+                this.videoQueue = [];
+                this.isPlaying = false;
+                
+                this.updateUI();
+                this.addLogEntry('Disconnected from stream');
+            }
+
+            async checkForNewSegments() {
+                if (!this.db || !this.isConnected) return;
+
+                try {
+                    const transaction = this.db.transaction(['segments'], 'readonly');
+                    const store = transaction.objectStore('segments');
+                    const request = store.getAll();
+                    
+                    request.onsuccess = () => {
+                        const segments = request.result;
+                        const availableSegments = segments
+                            .filter(s => s.index >= this.currentSegmentIndex)
+                            .sort((a, b) => a.index - b.index);
+                        
+                        if (availableSegments.length > 0) {
+                            this.addSegmentsToQueue(availableSegments);
+                            
+                            if (!this.isPlaying && this.videoQueue.length > 0) {
+                                this.playNextSegment();
+                            }
+                        }
+                        
+                        this.updateBufferHealth();
+                    };
+                    
+                    request.onerror = () => {
+                        this.addLogEntry('Error reading segments from database');
+                    };
+                    
+                } catch (error) {
+                    this.addLogEntry('Error checking for segments: ' + error.message);
+                }
+            }
+
+            addSegmentsToQueue(segments) {
+                for (const segment of segments) {
+                    if (!this.videoQueue.find(s => s.index === segment.index)) {
+                        const blob = new Blob([segment.data], { type: 'video/webm' });
+                        this.videoQueue.push({
+                            index: segment.index,
+                            url: URL.createObjectURL(blob),
+                            id: segment.id
+                        });
+                        
+                        this.addLogEntry('Added segment to queue: ' + segment.id);
+                    }
+                }
+                
+                // Sort queue by index
+                this.videoQueue.sort((a, b) => a.index - b.index);
+            }
+
+            playNextSegment() {
+                if (this.videoQueue.length === 0) {
+                    this.isPlaying = false;
+                    this.addLogEntry('No segments in queue, waiting...');
+                    return;
+                }
+
+                // Get the next segment in sequence
+                const nextSegment = this.videoQueue.find(s => s.index === this.currentSegmentIndex);
+                
+                if (!nextSegment) {
+                    this.isPlaying = false;
+                    this.addLogEntry('Waiting for segment ' + this.currentSegmentIndex);
+                    return;
+                }
+
+                // Remove from queue and play
+                this.videoQueue = this.videoQueue.filter(s => s.index !== nextSegment.index);
+                
+                this.videoPlayer.src = nextSegment.url;
+                this.videoPlayer.play().then(() => {
+                    this.isPlaying = true;
+                    this.currentSegmentIndex++;
+                    this.segmentsPlayed++;
+                    
+                    this.currentSegment.textContent = nextSegment.id;
+                    this.segmentsPlayed.textContent = this.segmentsPlayed;
+                    
+                    this.addLogEntry('Playing: ' + nextSegment.id);
+                    
+                    // Clean up old URL
+                    setTimeout(() => URL.revokeObjectURL(nextSegment.url), 1000);
+                    
+                }).catch(error => {
+                    this.addLogEntry('Error playing segment: ' + error.message);
+                    this.isPlaying = false;
+                });
+            }
+
+            handleVideoError(event) {
+                this.addLogEntry('Video error: ' + (event.target.error?.message || 'Unknown error'));
+                this.isPlaying = false;
+                
+                // Try to continue with next segment after a short delay
+                setTimeout(() => {
+                    if (this.isConnected) {
+                        this.playNextSegment();
+                    }
+                }, 1000);
+            }
+
+            updateBufferHealth() {
+                const bufferedSegments = this.videoQueue.length;
+                const bufferSeconds = bufferedSegments * 6; // Each segment is 6 seconds
+                this.bufferHealth.textContent = bufferSeconds + 's';
+            }
+
+            updateUI() {
+                this.connectBtn.disabled = this.isConnected;
+                this.disconnectBtn.disabled = !this.isConnected;
+                
+                if (this.isConnected) {
+                    this.status.innerHTML = '<span class="live-indicator"></span>LIVE - Connected';
+                    this.connectionStatus.textContent = 'Connected';
+                } else {
+                    this.status.innerHTML = '<span class="offline">Offline</span>';
+                    this.connectionStatus.textContent = 'Offline';
+                    this.currentSegment.textContent = '-';
+                }
+            }
+
+            addLogEntry(message) {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.textContent = '[' + timestamp + '] ' + message;
+                
+                this.viewerLog.appendChild(logEntry);
+                this.viewerLog.scrollTop = this.viewerLog.scrollHeight;
+                
+                // Keep only last 30 entries
+                while (this.viewerLog.children.length > 30) {
+                    this.viewerLog.removeChild(this.viewerLog.firstChild);
+                }
+            }
+        }
+
+        // Initialize viewer when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new LiveViewer();
+        });
+    </script>
+</body>
+</html>
